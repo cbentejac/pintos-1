@@ -211,9 +211,6 @@ timer_interrupt (struct intr_frame *args UNUSED)
   struct list_elem *e;
   struct thread *t;
 
- /* for (e = list_begin (&sleeping_threads);
-       e != list_end (&sleeping_threads);
-       e = list_next (e))*/
   while (!list_empty (&sleeping_threads))
   {
     e = list_front (&sleeping_threads);
