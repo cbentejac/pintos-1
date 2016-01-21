@@ -49,11 +49,11 @@ List of the sleeping threads.
 In timer_sleep(), we first compute the wake up time of the thread
 and assign it to the attribute wake_up_time of the thread structure:
 we do so by adding the parameter ticks to timer_ticks() (number of ticks
-since the system has booted). We then add this thread to the 
-sleeping_threads list, which is ordered (the first element will be the
-first to wake up). Once added to the list, the thread is blocked 
-(its state changes from "Running" to "Wait"). The list edition is
-done when the interrupts are disabled.
+since the system has booted). We then disable the interrupts to add this 
+thread to the sleeping_threads list, which is ordered (the first element 
+will be the first to wake up). Once added to the list, the thread is 
+blocked (its state changes from "Running" to "Waiting"). Once we are 
+done with the list edition, the interrupts are re-enabled.
 
 In timer_interrupt(), we iterate through the list, beginning with its
 front element, and check whether it is time to wake up the thread or
@@ -78,8 +78,18 @@ exit the function as soon as such an element is encountered.
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
+In timer_sleep(), we disable the interrupts before accessing and
+modifying our sleeping_threads list, which is the only global 
+variable to be modified in the function. As the interrupts are 
+disabled, there cannot be race conditions.
+
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
+
+In timer_sleep(), we disable the interrupts before accessing and 
+moddifying our sleeping_threads list, which is the only global
+variable to be modified in the function. As the interrupts are
+disabled, there cannot be races conditions.
 
 ---- RATIONALE ----
 
