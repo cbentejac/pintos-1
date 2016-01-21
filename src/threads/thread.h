@@ -88,6 +88,9 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+    int original_priority;              /* Keeps record of the original priority 
+                                           when the thread is donated another
+                                           priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
@@ -103,6 +106,10 @@ struct thread
 
     /* To avoid busy waiting in timer_sleep (). */
     int64_t wake_up_time;              /* Saves the wake up tick. */
+
+    /* For priority scheduling. */
+    struct list priority_donors;       /* List of the priority donors of the 
+                                          thread. */
   };
 
 /* If false (default), use round-robin scheduler.
