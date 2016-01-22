@@ -320,14 +320,28 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
+We didn't attempt the third problem, but the assignment itself wasn't
+especially hard. Implementing timer_sleep and the priority scheduling
+is not really complicated; the hardest and longer part was trying to
+understand the given code, and then figuring out what has to be modified.
+
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+
+The priority scheduling part was really interesting and useful to properly
+understand how scheduling works.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
 
+///
+
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students, either for future quarters or the remaining projects?
 
+///
+
 >> Any other comments?
+
+///
