@@ -91,7 +91,7 @@ disabled, there cannot be race conditions.
 In timer_sleep(), we disable the interrupts before accessing and 
 moddifying our sleeping_threads list, which is the only global
 variable to be modified in the function. As the interrupts are
-disabled, there cannot be races conditions.
+disabled, there cannot be race conditions.
 
 ---- RATIONALE ----
 
@@ -125,16 +125,36 @@ thread would donate its own priority, to be able to restore it.
 List of the threads donating their priority to the thread which
 owns this list. Each thread has its own list.
 
+ - struct lock *lock_to_acquire
+
+Lock the thread is waiting for (equals NULL if there's no lock to
+wait for). Useful to determine when to donate and restore priority.
+
 >> B2: Explain the data structure used to track priority donation.
 >> Use ASCII art to diagram a nested donation.  (Alternately, submit a
 >> .png file.)
 
-Nested donation:
+A list of the priority donors will be used to track priority donation.
+A thread is added to such a list as soon as its attribute lock_to_acquire
+is not equal to NULL anymore. It then donates its priority to the thread
+holding the lock so that it can be released.
+
+If a nested donation situation occurs, the lock holder priority will
+be updated using the thread->priority attribute. Unlike the thread->
+original_priority which keeps a record of the thread's very own 
+priority, thread->priority corresponds, when the donors list is not 
+empty, to the highest donated priority. The following ASCII diagram
+presents the evolution of the thread->priority attribute when a nested
+donation occurs.
+
+                       -- ASCII DIAGRAM -- 
 A, B and C are three threads with a respective priority L (low), M
 (medium) and H (high). C is waiting for a lock held by B, and B is 
 also waiting for a lock held by A. According to priority scheduling,
 C will be run first.
-"x" represents a lock held by a thread.
+"x" represents a lock. "x Y" represents a lock held by thread Y.
+". . ." represents an attempt to acquire a lock.
+"---->" represents a priority donation.
 
 
                                 Priority of A | B | C
@@ -142,6 +162,10 @@ C . . . x B                                 L | M | H
 C ----> x B                                 L | H | H   
 C ----> x B . . . x A                       L | H | H
 C ----> x B ----> x A                       H | H | H
+
+  ==> C's priority_donors list: empty || lock_to_acquire: B
+  ==> B's priority_donors list: C     || lock_to_acquire: A
+  ==> A's priority_donors list: B     || lock_to_acquire: NULL
 
 ---- ALGORITHMS ----
 
@@ -159,9 +183,38 @@ be the first to wake up.
 >> B4: Describe the sequence of events when a call to lock_acquire()
 >> causes a priority donation.  How is nested donation handled?
 
+If a call to lock_acquire() causes a priority donation, it means that 
+a thread A is trying to acquire a lock that is already held by a thread
+B, which has a lower priority than thread A. 
+
+In order to release the lock, A updates its lock_to_acquire attribute 
+with the lock. A then adds itself to the priority_donors list of B.
+If A->priority > B->priority (which can either be a donated priority if
+the priority_donors list is not empty or equal to B->original_priority
+if then priority_donors list is empty), then B->priority = A->priority, 
+which will allow B to run and release its lock. 
+
+(As previously mentioned in B2, the thread->priority attribute takes 
+nested donation into account: the nested threads priority is updated 
+"level by level", which implies that every time a thread is added to 
+the nest, the priority attribute of its donors already corresponds to 
+the donors' donated priority, and so on.)
+
 
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
+
+(A and B are the threads used as example in question B4.)
+
+If lock_release() is called, then lock->holder = NULL (before the call,
+lock->holder = B). A is removed from B's priority_donors list. If B's 
+priority_donors list is not empty, then B->priority = highest_priority
+_thread->priority; if the list is empty, then B->priority = original_
+priority. A acquires the lock (lock->holder = A) and is ready to run. 
+To be cautious, we then check if the running thread B has a higher
+priority than the threads in the ready_list. If it's not the case, 
+we call thread_yield() to yield the processor.
+
 
 ---- SYNCHRONIZATION ----
 
@@ -169,10 +222,39 @@ be the first to wake up.
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
 
+A potential race would happen if the interrupt handler was modifying
+the current thread's priority attribute while this priority attribute
+was being updated to the new_priority (argument of the thread_set_
+priority function). In order to avoid race conditions, we are 
+disabling the interrupts while the current thread's priority is being
+updated. A lock cannot be used to avoid this race because the interrupt 
+handler - which would be at the origin of the race condition - cannot 
+acquire a lock.
+
 ---- RATIONALE ----
 
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
+
+At the very beginning, we were thinking of sorting the ready_list because
+it seemed easier to implement scheduling without donation this way. However,
+it turned out that sorting the ready_list every single time it is modified
+(which happens a lot) would be a waste of time and resources, especially
+when the ready_list would contain a lot of threads. Moreover, it would not
+really come in handy when implementing priority donation.
+
+We thus decided to keep the ready_list unsorted, and simply use a get_highest
+_priority() function that would return the thread with the highest t->priority
+attribute. As we explained before, the priority attribute takes into account
+nested donations and is updated "level by level" in the nest. The use of
+original_priority allows us to keep the inital priority of a thread, which
+means that a thread will never be deprived of priority, not even when its
+priority_donators list will be empty. It also allows us to get the highest
+priorities iteratively rather than using only a t->priority attribute and 
+finding the highest priorities recursively: if we had a huge nest, recursion
+could get more expensive than iteration, and we would need to go to the first
+level in the nest every single time we would need to get the highest priority
+instead of simply going to the upper level.
 
 			  ADVANCED SCHEDULER
 			    (If Attempted)
