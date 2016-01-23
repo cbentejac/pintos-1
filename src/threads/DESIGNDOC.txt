@@ -329,7 +329,9 @@ understand the given code, and then figuring out what has to be modified.
 >> you greater insight into some aspect of OS design?
 
 The priority scheduling part was really interesting and useful to properly
-understand how scheduling works.
+understand how scheduling works. Also, the strategies of priority 
+donation and use of semaphores exemplify the importance of resource 
+conservation and security, which are important aspects of OS design.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
