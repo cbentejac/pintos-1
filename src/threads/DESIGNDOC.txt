@@ -8,7 +8,7 @@
 
 >> Fill in the names and email addresses of your group members.
 
-Erin Mullally <email@domain.example> <SID>
+Erin Mullally <emull005@ucr.edu> <860854551>
 Candice Bentejac <cbent002@ucr.edu> <861246425>
 
 ---- PRELIMINARIES ----
