@@ -110,6 +110,7 @@ struct thread
     /* For priority scheduling. */
     struct list priority_donors;       /* List of the priority donors of the 
                                           thread. */
+    struct lock *lock_to_acquire;      /* Lock the thread is waiting for. */
   };
 
 /* If false (default), use round-robin scheduler.

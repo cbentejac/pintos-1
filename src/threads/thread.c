@@ -471,6 +471,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->original_priority = priority;
   t->magic = THREAD_MAGIC;
   list_init (&t->priority_donors);
+  t->lock_to_acquire = NULL;
   list_push_back (&all_list, &t->allelem);
 }
 
@@ -491,12 +492,16 @@ alloc_frame (struct thread *t, size_t size)
 struct thread *
 get_highest_priority (struct list *l)
 {
+  /* Disable interrupts to edit the list. */
   enum intr_level old_level = intr_disable ();
 
-  struct thread *t = list_front (l);
-  struct thread *tmp;
+  struct thread *t = list_front (l); /* t = first element of l. */
+  struct thread *tmp; /* Used to compare threads' priorities in l. */
+  
   struct list_elem *e = list_front (l);
-  struct list_elem *e_tmp = list_front (l);
+  /* Used to "mark" the highest priority thread and then remove it
+     from l if l == ready_list. */
+  struct list_elem *e_tmp = list_front (l); 
 
   while (e != list_end (l))
   { 
@@ -509,8 +514,12 @@ get_highest_priority (struct list *l)
     e = list_next (e);
   }
 
-  list_remove (e_tmp);
+  if (l == &ready_list)
+    list_remove (e_tmp);
+
+  /* Turn on the interrupts. */
   intr_set_level (old_level);
+
   return t;
 }
 
