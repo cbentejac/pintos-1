@@ -487,6 +487,34 @@ alloc_frame (struct thread *t, size_t size)
   return t->stack;
 }
 
+/* Returns the thread with the highest priority. */
+struct thread *
+get_highest_priority (struct list *l)
+{
+  enum intr_level old_level = intr_disable ();
+
+  struct thread *t = list_front (l);
+  struct thread *tmp;
+  struct list_elem *e = list_front (l);
+  struct list_elem *e_tmp = list_front (l);
+
+  while (e != list_end (l))
+  { 
+    tmp = list_entry (e, struct thread, elem); 
+    if (t->priority <= tmp->priority)
+    {
+      t = tmp;
+      e_tmp = e;
+    }
+    e = list_next (e);
+  }
+
+  list_remove (e_tmp);
+  intr_set_level (old_level);
+  return t;
+}
+
+
 /* Chooses and returns the next thread to be scheduled.  Should
    return a thread from the run queue, unless the run queue is
    empty.  (If the running thread can continue running, then it
@@ -498,7 +526,8 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    return get_highest_priority (&ready_list);
+//    return list_entry (list_pop_front (&ready_list), struct thread, elem);
 }
 
 /* Completes a thread switch by activating the new thread's page
