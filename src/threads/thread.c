@@ -215,6 +215,13 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* If the newly created thread has a higher priority than
+     the current thread, yield. */
+  if (t->priority > thread_current ()->priority)
+    thread_yield ();
+
+  intr_set_level (old_level);
+
   return tid;
 }
 
@@ -349,7 +356,31 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  enum intr_level old_level = intr_disable ();
+
+  /* No matter what, the original_priority will always be updated. */
+  thread_current ()->original_priority = new_priority;
+
+  /* If the current thread has no donors/potential donors, then the
+     priority attribute can be updated. If the new_priority is higher
+     than the current's thread priority attribute, it can also be 
+     updated. */
+  if (list_empty (&thread_current ()->priority_donors)
+     || thread_current ()->priority < new_priority)
+    thread_current ()->priority = new_priority;
+
+  /* Checks if the thread has still the highest priority.
+     If not, yield. */
+  if (!list_empty (&ready_list))
+  {
+    struct list_elem *e = list_max (&ready_list, priority_comparator, NULL);
+    struct thread *tmp = list_entry (e, struct thread, elem);
+
+    if (tmp->priority > thread_current ()->priority)
+      thread_yield ();
+  }
+  
+  intr_set_level (old_level);
 }
 
 /* Returns the current thread's priority. */
