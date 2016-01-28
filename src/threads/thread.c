@@ -71,6 +71,12 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+
+static bool
+priority_comparator (const struct list_elem *a,
+                     const struct list_elem *b,
+                     void *aux UNUSED);
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -492,30 +498,16 @@ alloc_frame (struct thread *t, size_t size)
 struct thread *
 get_highest_priority (struct list *l)
 {
+  ASSERT (!list_empty (l));
+
   /* Disable interrupts to edit the list. */
   enum intr_level old_level = intr_disable ();
 
-  struct thread *t = list_front (l); /* t = first element of l. */
-  struct thread *tmp; /* Used to compare threads' priorities in l. */
-  
-  struct list_elem *e = list_front (l);
-  /* Used to "mark" the highest priority thread and then remove it
-     from l if l == ready_list. */
-  struct list_elem *e_tmp = list_front (l); 
-
-  while (e != list_end (l))
-  { 
-    tmp = list_entry (e, struct thread, elem); 
-    if (t->priority <= tmp->priority)
-    {
-      t = tmp;
-      e_tmp = e;
-    }
-    e = list_next (e);
-  }
+  struct list_elem *e = list_max (l, priority_comparator, NULL);
+  struct thread *t = list_entry (e, struct thread, elem);
 
   if (l == &ready_list)
-    list_remove (e_tmp);
+    list_remove (e);
 
   /* Turn on the interrupts. */
   intr_set_level (old_level);
@@ -523,6 +515,15 @@ get_highest_priority (struct list *l)
   return t;
 }
 
+static bool
+priority_comparator (const struct list_elem *a,
+                     const struct list_elem *b,
+                     void *aux UNUSED)
+{
+  struct thread *thread_a = list_entry (a, struct thread, elem);
+  struct thread *thread_b = list_entry (b, struct thread, elem);
+  return thread_a->priority < thread_b->priority;
+}
 
 /* Chooses and returns the next thread to be scheduled.  Should
    return a thread from the run queue, unless the run queue is
